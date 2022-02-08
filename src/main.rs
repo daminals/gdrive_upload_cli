@@ -195,7 +195,11 @@ fn gdrive_query_is_dir(result: String) -> bool {
     return result.contains("dir");
 }
 fn unwrap_gdrive_query_results() {
-
+    // still need to write this lol
+    // ignore everything after the first " " to get gdrive id so i can update it
+    // can i update folders? probably not; write a recursive function to find 
+    // every item in the query and update it individually
+    // if searched item not updating folder, upload it   
 }
 // return the new parent directory when creating a google folder
 fn return_parent(fname: &str) -> std::string::String {
