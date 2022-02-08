@@ -4,7 +4,7 @@
 
 ## Description
 
-A commmand line tool for uploading homework coded on the dcloud server onto specific google drive course folder.
+A commmand line tool for uploading homework coded on the dcloud server onto specific google drive course folders.
 
 The program uses rust and integrates the gdrive cli in order to config and organize uploads in a desired format.
 
