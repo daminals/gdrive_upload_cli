@@ -49,10 +49,9 @@ fn main() {
 
     let course = unwrap_keys(matches.value_of("class"), false);
     let dir = unwrap_keys(matches.value_of("directory"), true);
+    //println!("{:?}, {:?}", course, dir);
 
-    //println!("{:?}, {:?}, {:?}", course, folder_name, dir);
-
-    ctrlc::set_handler(move || {
+    ctrlc::set_handler(move || { // exit program early
         println!("received Ctrl+C!");
     })
     .expect("Error setting Ctrl-C handler");
@@ -70,13 +69,25 @@ fn command_line(course: &str, dir: &str) {
     let dot_driveignore = unwrap_dot_driveignore();
     let dot_driveignore = dot_driveignore.lines().collect::<Vec<_>>();
 
+    // check name of current directory
+    let get_basedir_cmd = format!("echo $(basename \"$PWD\")");
+    let get_basedir_spawn = Command::new("sh").arg("-c").arg(get_basedir_cmd).stdout(Stdio::piped()).output().unwrap();
+    let mut get_basedir_str = String::from_utf8(get_basedir_spawn.stdout).unwrap();
+
     // TODO: check if the folder already exists
     // this is the gdrive command
     //gdrive list --query " '14ejUWurUXx5bS3YFs7x3DGxFzSh_dGln' in parents "
     // will be pain in the booty to update so i will do it later
+    
+    let check_gdrive_cmd = format!("gdrive list --query \" \'{}\' in parents \"", &cse_folder_id);
+    let check_gdrive = Command::new("sh").arg("-c").arg(check_gdrive_cmd).stdout(Stdio::piped()).output().unwrap();
+    let mut gdrive_cmd_output = String::from_utf8(check_gdrive.stdout).unwrap();
+    //println!("{}", &gdrive_cmd_output);
+    unwrap_gdrive_query(gdrive_cmd_output, &get_basedir_str);
 
+    exit(0);
     // make gdrive dir to upload to here
-    let create_base_dir = format!("uploadname=$(basename \"$PWD\") && gdrive mkdir --parent {} $uploadname", &cse_folder_id);
+    let create_base_dir = format!("gdrive mkdir --parent {} {}", &cse_folder_id, &get_basedir_str); // NOTE: second var has trailing whitespace -- be careful when updating code
     let dir = Command::new("sh").arg("-c").arg(create_base_dir).stdout(Stdio::piped()).output().unwrap();
     let mut dir_name_full = String::from_utf8(dir.stdout).unwrap();
     let base_dir_id = unwrap_new_dir(dir_name_full);
@@ -167,6 +178,24 @@ fn unwrap_dot_driveignore() -> std::string::String {
         contents = String::from("");
     }
     return contents;
+}
+// unwrap gdrive query output  
+fn unwrap_gdrive_query(cmd_output: String, search_string: &String) -> String {
+    let mut split_output_lines = cmd_output.lines().skip(1).collect::<Vec<_>>();
+    for item in split_output_lines {
+        //println!("{}", item);
+        if item.contains(search_string.trim_end()) {
+                // strip the string to just the id from this
+                return String::from(item);
+        }
+    }
+    return String::from("");
+}
+fn gdrive_query_is_dir(result: String) -> bool {
+    return result.contains("dir");
+}
+fn unwrap_gdrive_query_results() {
+
 }
 // return the new parent directory when creating a google folder
 fn return_parent(fname: &str) -> std::string::String {
