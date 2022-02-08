@@ -116,6 +116,7 @@ fn command_line(course: &str, dir: &str) {
             // give folder name as dir name
             let create_cmd = format!("gdrive mkdir --parent {} {}", &base_dir_id, short_path);
             let subdir = Command::new("sh").arg("-c").arg(create_cmd).stdout(Stdio::piped()).output().unwrap();
+            assert!(subdir.status.success()); // make sure it worked !!
             let mut subdir_name_full = String::from_utf8(subdir.stdout).unwrap();
             print!("{}", subdir_name_full);
             // take the new directory ID to upload to it, use full path as location
@@ -126,11 +127,12 @@ fn command_line(course: &str, dir: &str) {
 
         // if it finally meets all conditions, upload the current file
         let cmd = format!("gdrive upload --parent {} {}", &base_dir_id, path.as_ref().unwrap().path().display());
+        // running this while saving the output auto-terminates process when done
         let output = Command::new("sh").arg("-c").arg(cmd).stdout(Stdio::piped()).output().expect("An error as occured");
+        assert!(output.status.success()); // make sure it worked !!
         print!("{}", String::from_utf8(output.stdout).unwrap());
-        assert!(output.status.success());
     }
-    // TODO: Quit when finished
+    //end process
     exit(0);
 }
 // unwrappers 
