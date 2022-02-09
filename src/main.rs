@@ -152,11 +152,11 @@ fn command_line(course: &str, dir: &str, base_case: bool, base_dir: String) {
         // if it finally meets all conditions, upload or update the current file
         // find the file id. pipe in the id of the current drive directory in order to query it
         let file_id = return_file_id(&result_struct, &result_struct.id, &path);
-        let path_id = unwrap_file_id(&file_id, &base_dir_id);
+        let path_id = unwrap_file_id(&file_id);
         //println!("{}, {}", file_id, path_id);
         //println!("{:?}", result_struct);
 
-        let cmd = return_upload_or_update_cmd(&result_struct.update, &path_id, &base_dir_id, &path);
+        let cmd = return_upload_or_update_cmd(&path_id, &base_dir_id, &path);
         // running this while saving the output auto-terminates process when done
         let output = Command::new("sh").arg("-c").arg(cmd).stdout(Stdio::piped()).output().expect("An error as occured");
         assert!(output.status.success()); // make sure it worked !!
@@ -221,9 +221,9 @@ fn unwrap_gdrive_query(cmd_output: String, search_string: &String) -> String {
     }
     return String::from("");
 }
-fn unwrap_file_id(file_id: &String, base_dir_id: &String) -> String {
+fn unwrap_file_id(file_id: &String) -> String {
     if file_id.is_empty() {
-        return base_dir_id.to_owned();
+        return "".to_owned();
     } else {
         return file_id.to_owned();
     }
@@ -268,8 +268,8 @@ fn return_base_directory(gstruct: &GdriveQuery, cse_folder_id: &String, get_base
         return unwrap_new_dir(dir_name_full);
     }
 }
-fn return_upload_or_update_cmd(update_paths: &bool, file_id: &String, parent_id: &String, path: &std::result::Result<std::fs::DirEntry, std::io::Error>) -> std::string::String {
-    if *update_paths {
+fn return_upload_or_update_cmd(file_id: &String, parent_id: &String, path: &std::result::Result<std::fs::DirEntry, std::io::Error>) -> std::string::String {
+    if !file_id.is_empty() {
         //println!("{}", file_id);
         return format!("gdrive update {} {}", file_id, path.as_ref().unwrap().path().display());
     } else {
