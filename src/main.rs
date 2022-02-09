@@ -36,6 +36,9 @@ struct GdriveQuery {
 }
 
 fn main() {
+    // TODO: pretty print & debug cli flags
+    // TODO: add a feature that auto deletes files that are on drive but not the 
+    // uploading directory
     let matches = App::new("Homework Uploader")
         .version("0.1.1")
         .author("Daniel Kogan")
