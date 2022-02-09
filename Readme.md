@@ -15,6 +15,7 @@ I learned how to create a sophisticated command line interface through rust, inc
 ## Features
 
 - reads custom .driveignore file to prevent uploading unwanted files
+- reads google drive to check if file already exists, if yes, updates it rather than create a new one
 - organizes all uploads under a directory name to prevent clutter in gdrive
 - recursion through nested directories ensures all files are uploaded
 - hashmap-integrated environment variables for fast processing
