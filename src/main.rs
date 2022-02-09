@@ -65,10 +65,15 @@ fn main() {
     })
     .expect("Error setting Ctrl-C handler");
 
-    command_line(&course, &dir, true);
+    // check name of current directory
+    let get_basedir_cmd = format!("echo $(basename \"$PWD\")");
+    let get_basedir_spawn = Command::new("sh").arg("-c").arg(get_basedir_cmd).stdout(Stdio::piped()).output().unwrap();
+    let mut get_basedir_str = String::from_utf8(get_basedir_spawn.stdout).unwrap();
+
+    command_line(&course, &dir, true, get_basedir_str);
 }
 
-fn command_line(course: &str, dir: &str, base_case: bool) {
+fn command_line(course: &str, dir: &str, base_case: bool, base_dir: String) {
     // course: look up in hashmap if coursename matches a class ID
     // dir: which directory to upload
     let paths = fs::read_dir(dir).unwrap();
@@ -78,20 +83,16 @@ fn command_line(course: &str, dir: &str, base_case: bool) {
     let dot_driveignore = unwrap_dot_driveignore();
     let dot_driveignore = dot_driveignore.lines().collect::<Vec<_>>();
 
-    // check name of current directory
-    let get_basedir_cmd = format!("echo $(basename \"$PWD\")");
-    let get_basedir_spawn = Command::new("sh").arg("-c").arg(get_basedir_cmd).stdout(Stdio::piped()).output().unwrap();
-    let mut get_basedir_str = String::from_utf8(get_basedir_spawn.stdout).unwrap();
-
-    let result_struct = query_gdrive(&cse_folder_id, &get_basedir_str);
+    let result_struct = query_gdrive(&cse_folder_id, &base_dir);
+    //println!("{:?}", result_struct.update);
     if result_struct.update {
-        print!("Updating Google Folder: {}", &get_basedir_str);
+        print!("Updating Google Folder: {}", &base_dir);
     }
     //println!("{:?}", result_struct);
 
     //exit(0);
     // make gdrive dir to upload to here
-    let base_dir_id = return_base_directory(&result_struct, &cse_folder_id, &get_basedir_str, base_case);
+    let base_dir_id = return_base_directory(&result_struct, &cse_folder_id, &base_dir, base_case);
 
     for path in paths {
         let readable_path = path.as_ref().unwrap().path().display().to_string();
@@ -131,7 +132,7 @@ fn command_line(course: &str, dir: &str, base_case: bool) {
 
             // update or upload
             if sub_result_struct.update {
-                command_line(&sub_result_struct.id.to_owned(), full_path, false);
+                command_line(&base_dir_id, full_path, false, String::from(format!("{}\n",short_path)));
             } else {
                 // upload new folder to the created gdrive folder (not course folder)
                 // give folder name as dir name
@@ -143,17 +144,19 @@ fn command_line(course: &str, dir: &str, base_case: bool) {
                 
                 // take the new directory ID to upload to it, use full path as location
                 let subdir_id = unwrap_new_dir(subdir_name_full);
-                command_line(&subdir_id, full_path, false);
+                command_line(&subdir_id, full_path, false, String::from(&base_dir));
             }
             continue;
         }
 
         // if it finally meets all conditions, upload or update the current file
-        // find the file id
-        let file_id = return_file_id(&result_struct, &base_dir_id, &path);
+        // find the file id. pipe in the id of the current drive directory in order to query it
+        let file_id = return_file_id(&result_struct, &result_struct.id, &path);
         let path_id = unwrap_file_id(&file_id, &base_dir_id);
+        //println!("{}, {}", file_id, path_id);
+        //println!("{:?}", result_struct);
 
-        let cmd = return_upload_or_update_cmd(&result_struct.update, &path_id, &path);
+        let cmd = return_upload_or_update_cmd(&result_struct.update, &path_id, &base_dir_id, &path);
         // running this while saving the output auto-terminates process when done
         let output = Command::new("sh").arg("-c").arg(cmd).stdout(Stdio::piped()).output().expect("An error as occured");
         assert!(output.status.success()); // make sure it worked !!
@@ -166,8 +169,11 @@ fn query_gdrive(folder_id: &String, search_string: &String) -> GdriveQuery {
     let check_gdrive_cmd = format!("gdrive list --query \" \'{}\' in parents \"", folder_id);
     let check_gdrive = Command::new("sh").arg("-c").arg(check_gdrive_cmd).stdout(Stdio::piped()).output().unwrap();
     let mut gdrive_cmd_output = String::from_utf8(check_gdrive.stdout).unwrap();
+    //("I am looking for {}", search_string);
+    //println!("All Possible Results are: {}", gdrive_cmd_output);
     //println!("{}", &gdrive_cmd_output);
     let query_result = unwrap_gdrive_query(gdrive_cmd_output, search_string);
+    //println!("The result of my query is: {}", query_result);
     return check_gdrive_query_is_none(&query_result);
 }
 // unwrappers 
@@ -262,11 +268,12 @@ fn return_base_directory(gstruct: &GdriveQuery, cse_folder_id: &String, get_base
         return unwrap_new_dir(dir_name_full);
     }
 }
-fn return_upload_or_update_cmd(update_paths: &bool, path_id: &String, path: &std::result::Result<std::fs::DirEntry, std::io::Error>) -> std::string::String {
+fn return_upload_or_update_cmd(update_paths: &bool, file_id: &String, parent_id: &String, path: &std::result::Result<std::fs::DirEntry, std::io::Error>) -> std::string::String {
     if *update_paths {
-        return format!("gdrive update {} {}", path_id, path.as_ref().unwrap().path().display());
+        //println!("{}", file_id);
+        return format!("gdrive update {} {}", file_id, path.as_ref().unwrap().path().display());
     } else {
-        return format!("gdrive upload --parent {} {}", path_id, path.as_ref().unwrap().path().display());
+        return format!("gdrive upload --parent {} {}", parent_id, path.as_ref().unwrap().path().display());
     }
 }
 fn return_file_id(gstruct: &GdriveQuery, folder_id: &String, path: &std::result::Result<std::fs::DirEntry, std::io::Error>) -> String{
@@ -274,8 +281,10 @@ fn return_file_id(gstruct: &GdriveQuery, folder_id: &String, path: &std::result:
     // take the last / so its the name of the current folder
     let short_path = path.as_ref().unwrap().path().display().to_string();
     let short_path = short_path.split("/").last().unwrap();
+    //println!("{:?}", gstruct);
 
     if gstruct.update {
+        //println!("I am Querying: {}", short_path);
         let file_query = query_gdrive(folder_id, &String::from(short_path));
         if file_query.update{
             return file_query.id;
