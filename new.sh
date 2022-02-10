@@ -5,4 +5,4 @@
 # 01.31.2022
 
 eval "$(./src/config)"  
-cargo run -- -c 160 -d .
+cargo run -- -a urmom -v 12345

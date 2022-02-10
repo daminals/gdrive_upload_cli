@@ -44,9 +44,9 @@ fn main() {
         .author("Daniel Kogan")
         .about("Uploads my directories to my google drive")
         .arg(
-            Arg::new("class")
+            Arg::new("c")
                 .short('c')
-                .long("class")
+                .long("c")
                 .takes_value(true)
                 .help("Stony Brook Course Number"),
         )
@@ -57,25 +57,46 @@ fn main() {
                 .takes_value(true)
                 .help("What directory should I upload?"),
         )
+        .arg(
+            Arg::new("a")
+                .short('a')
+                .long("a")
+                .takes_value(true)
+                .help("Add new env var to tool")
+        ).arg(
+            Arg::new("v")
+                .short('v')
+                .long("v")
+                .takes_value(true)
+                .help("Add value to new env name")
+        )
         .get_matches();
-
-    let course = unwrap_keys(matches.value_of("class"), false);
-    let dir = unwrap_keys(matches.value_of("directory"), true);
-    //println!("{:?}, {:?}", course, dir);
 
     ctrlc::set_handler(move || { // exit program early
         println!("received Ctrl+C!");
     })
     .expect("Error setting Ctrl-C handler");
+    
+    if (check_uploading(matches.value_of("c"), matches.value_of("a"), matches.value_of("v"))) {
+        // if uploading, do this
+        let course = unwrap_keys(matches.value_of("c"), false);
+        let dir = unwrap_keys(matches.value_of("directory"), true);
+        //println!("{:?}, {:?}", course, dir);
+    
+        // check name of current directory
+        let get_basedir_cmd = format!("echo $(basename \"$PWD\")");
+        let get_basedir_spawn = Command::new("sh").arg("-c").arg(get_basedir_cmd).stdout(Stdio::piped()).output().unwrap();
+        let mut get_basedir_str = String::from_utf8(get_basedir_spawn.stdout).unwrap();
+    
+        command_line(&course, &dir, true, get_basedir_str);
+    } else { // if not uploading, append 
+        let key = unwrap_keys(matches.value_of("a"), false);
+        let value = unwrap_keys(matches.value_of("v"), false);
 
-    // check name of current directory
-    let get_basedir_cmd = format!("echo $(basename \"$PWD\")");
-    let get_basedir_spawn = Command::new("sh").arg("-c").arg(get_basedir_cmd).stdout(Stdio::piped()).output().unwrap();
-    let mut get_basedir_str = String::from_utf8(get_basedir_spawn.stdout).unwrap();
-
-    command_line(&course, &dir, true, get_basedir_str);
+        append_envs(key, value);
+    }
 }
-
+// upload function
 fn command_line(course: &str, dir: &str, base_case: bool, base_dir: String) {
     // course: look up in hashmap if coursename matches a class ID
     // dir: which directory to upload
@@ -192,6 +213,21 @@ fn unwrap_keys(keyword: Option<&str>, dir: bool) -> &str {
         panic!("No keyword provided");
     }
 }
+fn check_uploading(course: Option<&str>, add: Option<&str>, value: Option<&str>) -> bool {
+    if (add.is_none() != value.is_none()) {
+        panic!("Var name and value belong together shawty 💔");
+    }
+    
+    if (course.is_none() && !add.is_none()) {
+        return false;
+    } else if (add.is_none() && !course.is_none()) {
+        return true;
+    } else if (add.is_none() && course.is_none()) {
+        panic!("No keywords provided");
+    } else {
+        panic!("Too many arguments");
+    }
+}
 // strip directory string so only the gdrive ID is left
 fn unwrap_new_dir(mut directory: String) -> std::string::String {
     let mut i = 0;
@@ -297,4 +333,34 @@ fn return_file_id(gstruct: &GdriveQuery, folder_id: &String, path: &std::result:
     } else {
         return String::from("")
     }
+}
+// addendum function
+use std::fs::File;
+use std::io::Write;
+
+fn append_envs(key: &str, value: &str) {
+    let config_file = env::var("config_file").unwrap();
+    let addendum = format!("        (\"{}\", env::var(\"UPLOAD{}\").unwrap()),", key, key);
+    let config_addendum = format!("echo export UPLOAD{}={}", key, value);
+
+    let append_config_cmd = format!("sudo echo \"{}\" >> {}", config_addendum, config_file);
+    let spawn_append_cmd = Command::new("sh").arg("-c").arg(append_config_cmd).stdout(Stdio::piped()).output().unwrap();
+    //let output = String::from_utf8(spawn_append_cmd.stdout).unwrap();
+
+    let this_dir = env::var("rs_file").unwrap();
+    let this_file = format!("{}/src/main.rs", &this_dir);
+    let contents = fs::read_to_string(&this_file)
+        .expect("Something went wrong reading the file");
+    let mut content_new_lines = contents.lines().collect::<Vec<_>>();
+
+    let new_line = format!("{}\n{}",content_new_lines[23], addendum); // edit the hashmap to add the new appended variable
+    content_new_lines[23] = &new_line[..];
+
+    let mut write_file = File::create(this_file).expect("Error opening file");
+    for line in content_new_lines {
+        writeln!(&write_file, "{}", line).unwrap();
+    }
+
+    let update_program_cmd = format!("cd {} && ./update ", &this_dir);
+    let run_update = Command::new("sh").arg("-c").arg(update_program_cmd).stdout(Stdio::piped()).output().unwrap();
 }
