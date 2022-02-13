@@ -37,6 +37,7 @@ struct GdriveQuery {
 
 fn main() {
     // TODO: pretty print & debug cli flags
+    // TODO: add a share argument that will share the folder with other people
     // TODO: add a feature that auto deletes files that are on drive but not the 
     // uploading directory
     let matches = App::new("Homework Uploader")
