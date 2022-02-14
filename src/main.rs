@@ -110,6 +110,7 @@ fn command_line(course: &str, dir: &str, base_case: bool, base_dir: String) {
 
     let result_struct = query_gdrive(&cse_folder_id, &base_dir);
     //println!("{:?}", result_struct.update);
+    // TODO: check if folder is trashed
     if result_struct.update {
         print!("Updating Google Folder: {}", &base_dir);
     }
@@ -188,6 +189,7 @@ fn command_line(course: &str, dir: &str, base_case: bool, base_dir: String) {
         print!("{}", String::from_utf8(output.stdout).unwrap());
     }
     //end process
+    println!("\u{001b}[32mProcesses completed ✅\u{001b}[0m");
     exit(0);
 }
 fn query_gdrive(folder_id: &String, search_string: &String) -> GdriveQuery {
