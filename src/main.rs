@@ -112,7 +112,9 @@ fn command_line(course: &str, dir: &str, base_case: bool, base_dir: String) {
     //println!("{:?}", result_struct.update);
     // TODO: check if folder is trashed
     if result_struct.update {
-        print!("Updating Google Folder: {}", &base_dir);
+        print!("\u{001b}[33mUpdating Google Folder: ⏳{}\u{001b}[0m", &base_dir);
+    } else {
+        print!("\u{001b}[33mUploading Google Folder: ⏳{}\u{001b}[0m", &base_dir);
     }
     //println!("{:?}", result_struct);
 
