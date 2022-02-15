@@ -44,7 +44,7 @@ struct GdriveQuery {
 // of updating the not-trashed folder
 fn main() {
     let matches = App::new("Homework Uploader")
-        .version("0.1.1")
+        .version("0.1.2")
         .author("Daniel Kogan")
         .about("Uploads my directories to my google drive")
         .arg(
