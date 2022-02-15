@@ -48,27 +48,27 @@ fn main() {
         .author("Daniel Kogan")
         .about("Uploads my directories to my google drive")
         .arg(
-            Arg::new("c")
-                .short('c')
+            Arg::new("c") // which course to upload to
+                .short('c') // will check hashmap for drive folder id
                 .long("c")
                 .takes_value(true)
                 .help("Stony Brook Course Number"),
         )
         .arg(
-            Arg::new("directory")
-                .short('d')
+            Arg::new("directory") // which directory to upload
+                .short('d') // default is .
                 .long("dir")
                 .takes_value(true)
                 .help("What directory should I upload?"),
         )
         .arg(
-            Arg::new("a")
+            Arg::new("a") // add key
                 .short('a')
                 .long("a")
                 .takes_value(true)
                 .help("Add new env var to tool")
         ).arg(
-            Arg::new("v")
+            Arg::new("v") // value
                 .short('v')
                 .long("v")
                 .takes_value(true)
@@ -77,7 +77,9 @@ fn main() {
         .get_matches();
 
     ctrlc::set_handler(move || { // exit program early
-        println!("received Ctrl+C!");
+        let red = "\u{001b}[31m";
+        let clear_format = "\u{001b}[0m";    
+        println!("{}Exiting Program...{}", red, clear_format);
     })
     .expect("Error setting Ctrl-C handler");
     
