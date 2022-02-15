@@ -99,6 +99,10 @@ fn main() {
 }
 // upload function
 fn command_line(course: &str, dir: &str, base_case: bool, base_dir: String) {
+    // colors 
+    let yellow = "\u{001b}[33m";
+    let green = "\u{001b}[32m";
+    let clear_format = "\u{001b}[0m";
     // course: look up in hashmap if coursename matches a class ID
     // dir: which directory to upload
     let paths = fs::read_dir(dir).unwrap();
@@ -110,11 +114,10 @@ fn command_line(course: &str, dir: &str, base_case: bool, base_dir: String) {
 
     let result_struct = query_gdrive(&cse_folder_id, &base_dir);
     //println!("{:?}", result_struct.update);
-    // TODO: check if folder is trashed
-    if result_struct.update {
-        print!("\u{001b}[33mUpdating Google Folder: ⏳{}\u{001b}[0m", &base_dir);
+    if result_struct.update && !is_trashed(&base_dir) {
+        print!("{}Updating Google Folder: {}  ⏳{}\n", &yellow, &base_dir.trim(), &clear_format);
     } else {
-        print!("\u{001b}[33mUploading Google Folder: ⏳{}\u{001b}[0m", &base_dir);
+        print!("{}Uploading Google Folder: {}  ⏳{}\n", &yellow, &base_dir.trim(), &clear_format);
     }
     //println!("{:?}", result_struct);
 
@@ -159,7 +162,7 @@ fn command_line(course: &str, dir: &str, base_case: bool, base_dir: String) {
             let sub_result_struct = query_gdrive( &base_dir_id, &String::from(short_path));
 
             // update or upload
-            if sub_result_struct.update {
+            if sub_result_struct.update && !is_trashed(&base_dir) {
                 command_line(&base_dir_id, full_path, false, String::from(format!("{}\n",short_path)));
             } else {
                 // upload new folder to the created gdrive folder (not course folder)
@@ -191,7 +194,7 @@ fn command_line(course: &str, dir: &str, base_case: bool, base_dir: String) {
         print!("{}", String::from_utf8(output.stdout).unwrap());
     }
     //end process
-    println!("\u{001b}[32mProcesses completed ✅\u{001b}[0m");
+    println!("{}Processes completed ✅{}", &green, &clear_format);
     exit(0);
 }
 fn query_gdrive(folder_id: &String, search_string: &String) -> GdriveQuery {
@@ -303,7 +306,7 @@ fn return_base_directory(gstruct: &GdriveQuery, cse_folder_id: &String, get_base
     if !base_case {
         return cse_folder_id.to_owned();
     }
-    if gstruct.update {
+    if gstruct.update  && !is_trashed(&cse_folder_id){
         return gstruct.id.to_owned();
     } else {
         let create_base_dir = format!("gdrive mkdir --parent {} {}", cse_folder_id, get_basedir_str); // NOTE: second var has trailing whitespace -- be careful when updating code
@@ -313,7 +316,7 @@ fn return_base_directory(gstruct: &GdriveQuery, cse_folder_id: &String, get_base
     }
 }
 fn return_upload_or_update_cmd(file_id: &String, parent_id: &String, path: &std::result::Result<std::fs::DirEntry, std::io::Error>) -> std::string::String {
-    if !file_id.is_empty() {
+    if !file_id.is_empty() && !is_trashed(&file_id) {
         //println!("{}", file_id);
         return format!("gdrive update {} {}", file_id, path.as_ref().unwrap().path().display());
     } else {
@@ -339,23 +342,36 @@ fn return_file_id(gstruct: &GdriveQuery, folder_id: &String, path: &std::result:
         return String::from("")
     }
 }
+fn is_trashed(search_string: &String) -> bool {
+    let query_trash_cmd = "gdrive list -q \"trashed\" = true";
+    let trash_stdout = Command::new("sh").arg("-c").arg(query_trash_cmd).stdout(Stdio::piped()).output().unwrap();
+    let mut trash = String::from_utf8(trash_stdout.stdout).unwrap();
+    let trash_query = unwrap_gdrive_query(trash, search_string);
+    return trash_query.is_empty();
+}
 // addendum function
 use std::fs::File;
 use std::io::Write;
 
 fn append_envs(key: &str, value: &str) {
+    // colors
+    let red = "\u{001b}[31m";
+    let green = "\u{001b}[32m";
+    let clear_format = "\u{001b}[0m";
+    //config
     let config_file = env::var("config_file").unwrap();
     let addendum = format!("        (\"{}\", env::var(\"UPLOAD{}\").unwrap()),", key, key);
     let config_addendum = format!("echo export UPLOAD{}={}", key, value);
-
+    //commnds
     let append_config_cmd = format!("sudo echo \"{}\" >> {}", config_addendum, config_file);
     let spawn_append_cmd = Command::new("sh").arg("-c").arg(append_config_cmd).stdout(Stdio::piped()).output().unwrap();
     //let output = String::from_utf8(spawn_append_cmd.stdout).unwrap();
 
     let this_dir = env::var("rs_file").unwrap();
     let this_file = format!("{}/src/main.rs", &this_dir);
+    let error_message = format!("{}Something went wrong reading the file{}", &red, &clear_format);
     let contents = fs::read_to_string(&this_file)
-        .expect("Something went wrong reading the file");
+        .expect(&error_message);
     let mut content_new_lines = contents.lines().collect::<Vec<_>>();
 
     let new_line = format!("{}\n{}",content_new_lines[23], addendum); // edit the hashmap to add the new appended variable
@@ -368,4 +384,5 @@ fn append_envs(key: &str, value: &str) {
 
     let update_program_cmd = format!("cd {} && ./update ", &this_dir);
     let run_update = Command::new("sh").arg("-c").arg(update_program_cmd).stdout(Stdio::piped()).output().unwrap();
+    println!("{}Processes completed ✅{}", &green, &clear_format);
 }
