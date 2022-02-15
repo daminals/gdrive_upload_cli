@@ -344,7 +344,8 @@ fn return_file_id(gstruct: &GdriveQuery, folder_id: &String, path: &std::result:
 }
 fn is_trashed(search_string: &String) -> bool {
     let query_trash_cmd = "gdrive list -q \"trashed\" = true";
-    let trash_stdout = Command::new("sh").arg("-c").arg(query_trash_cmd).stdout(Stdio::piped()).output().unwrap();
+    let trash_stdout = Command::new("sh").arg("-c").arg(query_trash_cmd)
+        .stdout(Stdio::piped()).output().unwrap();
     let mut trash = String::from_utf8(trash_stdout.stdout).unwrap();
     let trash_query = unwrap_gdrive_query(trash, search_string);
     return trash_query.is_empty();
