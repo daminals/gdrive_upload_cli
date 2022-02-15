@@ -35,11 +35,14 @@ struct GdriveQuery {
     update: bool
 }
 
+// TODO: pretty print & debug cli flags
+// TODO: add a share argument that will share the folder with other people
+// TODO: add a feature that auto deletes files that are on drive 
+// but not the uploading directory
+// TODO: if there is a folder in the trash of the same name 
+// as a folder that can be updated, it will upload a new one instead 
+// of updating the not-trashed folder
 fn main() {
-    // TODO: pretty print & debug cli flags
-    // TODO: add a share argument that will share the folder with other people
-    // TODO: add a feature that auto deletes files that are on drive but not the 
-    // uploading directory
     let matches = App::new("Homework Uploader")
         .version("0.1.1")
         .author("Daniel Kogan")
