@@ -35,7 +35,6 @@ struct GdriveQuery {
     update: bool
 }
 
-// TODO: pretty print & debug cli flags
 // TODO: add a share argument that will share the folder with other people
 // TODO: add a feature that auto deletes files that are on drive 
 // but not the uploading directory
@@ -48,9 +47,9 @@ fn main() {
         .author("Daniel Kogan")
         .about("Uploads my directories to my google drive")
         .arg(
-            Arg::new("c") // which course to upload to
+            Arg::new("course number") // which course to upload to
                 .short('c') // will check hashmap for drive folder id
-                .long("c")
+                .long("course")
                 .takes_value(true)
                 .help("Stony Brook Course Number"),
         )
@@ -62,15 +61,15 @@ fn main() {
                 .help("What directory should I upload?"),
         )
         .arg(
-            Arg::new("a") // add key
+            Arg::new("add key") // add key
                 .short('a')
-                .long("a")
+                .long("add")
                 .takes_value(true)
                 .help("Add new env var to tool")
         ).arg(
-            Arg::new("v") // value
+            Arg::new("value of key") // value
                 .short('v')
-                .long("v")
+                .long("value")
                 .takes_value(true)
                 .help("Add value to new env name")
         )
@@ -118,15 +117,11 @@ fn command_line(course: &str, dir: &str, base_case: bool, base_dir: String) {
     let dot_driveignore = dot_driveignore.lines().collect::<Vec<_>>();
 
     let result_struct = query_gdrive(&cse_folder_id, &base_dir);
-    //println!("{:?}", result_struct.update);
     if result_struct.update && !is_trashed(&base_dir) {
         print!("{}Updating Google Folder: {}  ⏳{}\n", &yellow, &base_dir.trim(), &clear_format);
     } else {
         print!("{}Uploading Google Folder: {}  ⏳{}\n", &yellow, &base_dir.trim(), &clear_format);
     }
-    //println!("{:?}", result_struct);
-
-    //exit(0);
     // make gdrive dir to upload to here
     let base_dir_id = return_base_directory(&result_struct, &cse_folder_id, &base_dir, base_case);
 
@@ -372,17 +367,17 @@ fn append_envs(key: &str, value: &str) {
     let append_config_cmd = format!("sudo echo \"{}\" >> {}", config_addendum, config_file);
     let spawn_append_cmd = Command::new("sh").arg("-c").arg(append_config_cmd).stdout(Stdio::piped()).output().unwrap();
     //let output = String::from_utf8(spawn_append_cmd.stdout).unwrap();
-
+    // update hashmap
     let this_dir = env::var("rs_file").unwrap();
     let this_file = format!("{}/src/main.rs", &this_dir);
     let error_message = format!("{}Something went wrong reading the file{}", &red, &clear_format);
     let contents = fs::read_to_string(&this_file)
         .expect(&error_message);
     let mut content_new_lines = contents.lines().collect::<Vec<_>>();
-
+    // format the new_line
     let new_line = format!("{}\n{}",content_new_lines[23], addendum); // edit the hashmap to add the new appended variable
     content_new_lines[23] = &new_line[..];
-
+    
     let mut write_file = File::create(this_file).expect("Error opening file");
     for line in content_new_lines {
         writeln!(&write_file, "{}", line).unwrap();
