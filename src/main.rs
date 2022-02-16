@@ -47,7 +47,7 @@ fn main() {
         .author("Daniel Kogan")
         .about("Uploads my directories to my google drive")
         .arg(
-            Arg::new("course number") // which course to upload to
+            Arg::new("course") // which course to upload to
                 .short('c') // will check hashmap for drive folder id
                 .long("course")
                 .takes_value(true)
@@ -61,17 +61,25 @@ fn main() {
                 .help("What directory should I upload?"),
         )
         .arg(
-            Arg::new("add key") // add key
+            Arg::new("key") // add key
                 .short('a')
                 .long("add")
                 .takes_value(true)
                 .help("Add new env var to tool")
-        ).arg(
-            Arg::new("value of key") // value
+        )
+        .arg(
+            Arg::new("value") // value
                 .short('v')
                 .long("value")
                 .takes_value(true)
                 .help("Add value to new env name")
+        )
+        .arg(
+            Arg::new("share") // share
+            .short('s')
+            .long("share")
+            .takes_value(true)
+            .help("Add emails to share directory to, seperate by comma")
         )
         .get_matches();
 
@@ -81,11 +89,12 @@ fn main() {
         println!("{}Exiting Program...{}", red, clear_format);
     })
     .expect("Error setting Ctrl-C handler");
-    
-    if (check_uploading(matches.value_of("c"), matches.value_of("a"), matches.value_of("v"))) {
+
+    if (check_uploading(matches.value_of("course"), matches.value_of("key"), matches.value_of("value"))) {
         // if uploading, do this
-        let course = unwrap_keys(matches.value_of("c"), false);
-        let dir = unwrap_keys(matches.value_of("directory"), true);
+        let course = unwrap_keys(matches.value_of("course"), false, true);
+        let dir = unwrap_keys(matches.value_of("directory"), true, false);
+        let share = unwrap_keys(matches.value_of("share"), false, false);
         //println!("{:?}, {:?}", course, dir);
     
         // check name of current directory
@@ -93,16 +102,16 @@ fn main() {
         let get_basedir_spawn = Command::new("sh").arg("-c").arg(get_basedir_cmd).stdout(Stdio::piped()).output().unwrap();
         let mut get_basedir_str = String::from_utf8(get_basedir_spawn.stdout).unwrap();
     
-        command_line(&course, &dir, true, get_basedir_str);
+        command_line(&course, &dir, &share, true, get_basedir_str);
     } else { // if not uploading, append 
-        let key = unwrap_keys(matches.value_of("a"), false);
-        let value = unwrap_keys(matches.value_of("v"), false);
+        let key = unwrap_keys(matches.value_of("a"), false, true);
+        let value = unwrap_keys(matches.value_of("v"), false, true);
 
         append_envs(key, value);
     }
 }
 // upload function
-fn command_line(course: &str, dir: &str, base_case: bool, base_dir: String) {
+fn command_line(course: &str, dir: &str, share: &str, base_case: bool, base_dir: String) {
     // colors 
     let yellow = "\u{001b}[33m";
     let green = "\u{001b}[32m";
@@ -111,11 +120,11 @@ fn command_line(course: &str, dir: &str, base_case: bool, base_dir: String) {
     // dir: which directory to upload
     let paths = fs::read_dir(dir).unwrap();
     let cse_folder_id = return_parent(course);
-
+    let share_to = unwrap_share(&share);
     // dot_driveignore
     let dot_driveignore = unwrap_dot_driveignore();
     let dot_driveignore = dot_driveignore.lines().collect::<Vec<_>>();
-
+    // return the proper gdrive query struct
     let result_struct = query_gdrive(&cse_folder_id, &base_dir);
     if result_struct.update && !is_trashed(&base_dir) {
         print!("{}Updating Google Folder: {}  ⏳{}\n", &yellow, &base_dir.trim(), &clear_format);
@@ -124,7 +133,14 @@ fn command_line(course: &str, dir: &str, base_case: bool, base_dir: String) {
     }
     // make gdrive dir to upload to here
     let base_dir_id = return_base_directory(&result_struct, &cse_folder_id, &base_dir, base_case);
-
+    // shares base drive with the specified users...
+    if !(share == "") { // if share is not empty...
+        for email in share_to {
+            let share_cmd = format!("gdrive share --type user --role writer --email {} {}", email, &base_dir_id);
+            let share_execute_cmd = Command::new("sh").arg("-c").arg(share_cmd).stdout(Stdio::piped()).output().unwrap();
+            println!("Directory shared with: {}{}{}", &green, &email, &clear_format);
+        }
+    }
     for path in paths {
         let readable_path = path.as_ref().unwrap().path().display().to_string();
         // write some tests
@@ -163,7 +179,7 @@ fn command_line(course: &str, dir: &str, base_case: bool, base_dir: String) {
 
             // update or upload
             if sub_result_struct.update && !is_trashed(&base_dir) {
-                command_line(&base_dir_id, full_path, false, String::from(format!("{}\n",short_path)));
+                command_line(&base_dir_id, full_path, "", false, String::from(format!("{}\n",short_path)));
             } else {
                 // upload new folder to the created gdrive folder (not course folder)
                 // give folder name as dir name
@@ -175,7 +191,7 @@ fn command_line(course: &str, dir: &str, base_case: bool, base_dir: String) {
                 
                 // take the new directory ID to upload to it, use full path as location
                 let subdir_id = unwrap_new_dir(subdir_name_full);
-                command_line(&subdir_id, full_path, false, String::from(&base_dir));
+                command_line(&subdir_id, full_path, "", false, String::from(&base_dir));
             }
             continue;
         }
@@ -210,22 +226,25 @@ fn query_gdrive(folder_id: &String, search_string: &String) -> GdriveQuery {
 }
 // unwrappers 
 // read cli arguments
-fn unwrap_keys(keyword: Option<&str>, dir: bool) -> &str {
+fn unwrap_keys(keyword: Option<&str>, dir: bool, mandatory: bool) -> &str {
     // if no folder name, set it to folder name of where command is run from
     if !keyword.is_none() {
         return keyword.unwrap();
     } else {
         if dir {
             return ".";
+        } else if (mandatory) {
+            panic!("No keyword provided")
+        } else {
+            return "";
         }
-        panic!("No keyword provided");
     }
 }
+// determine if the program should be uploading new files or updating old ones
 fn check_uploading(course: Option<&str>, add: Option<&str>, value: Option<&str>) -> bool {
     if (add.is_none() != value.is_none()) {
         panic!("Var name and value belong together shawty 💔");
     }
-    
     if (course.is_none() && !add.is_none()) {
         return false;
     } else if (add.is_none() && !course.is_none()) {
@@ -245,6 +264,10 @@ fn unwrap_new_dir(mut directory: String) -> std::string::String {
     } 
     let dir_id = directory[10..].to_owned();
     return dir_id;
+}
+// unwrap share cli argument
+fn unwrap_share(share: &str) -> Vec<&str> {
+    return share.split(",").collect::<Vec<&str>>();
 }
 // read the dot driveignore file. Return "" if non-existent
 fn unwrap_dot_driveignore() -> std::string::String {
@@ -268,6 +291,7 @@ fn unwrap_gdrive_query(cmd_output: String, search_string: &String) -> String {
     }
     return String::from("");
 }
+// safely unwrap the drive file's id
 fn unwrap_file_id(file_id: &String) -> String {
     if file_id.is_empty() {
         return "".to_owned();
@@ -275,6 +299,7 @@ fn unwrap_file_id(file_id: &String) -> String {
         return file_id.to_owned();
     }
 }
+// check if the gdrive query returns none
 fn check_gdrive_query_is_none(query: &String) -> GdriveQuery {
     if !query.is_empty() {
         let result_struct = unwrap_gdrive_query_results(query);
@@ -284,9 +309,11 @@ fn check_gdrive_query_is_none(query: &String) -> GdriveQuery {
         return result_struct;
     }
 }
+// is gdrive query result a directory?
 fn gdrive_query_is_dir(result: GdriveQuery) -> bool {
     return result.gtype == "dir";
 }
+// unwrap the results of a gdrive query into a struct
 fn unwrap_gdrive_query_results(result: &String) -> GdriveQuery {
     let result_vector = result.split_whitespace().collect::<Vec<&str>>();
     return GdriveQuery{ id: result_vector[0].to_string(), name: result_vector[1].to_string(), gtype: result_vector[2].to_string(), dob: result_vector[3].to_string(), age: result_vector[4].to_string(), update: true };
@@ -302,6 +329,7 @@ fn return_parent(fname: &str) -> std::string::String {
         return cse_folder_id;
     }
 }
+// return the id of the current gdrive base directory 
 fn return_base_directory(gstruct: &GdriveQuery, cse_folder_id: &String, get_basedir_str: &String, base_case: bool) -> std::string::String {
     if !base_case {
         return cse_folder_id.to_owned();
@@ -315,6 +343,7 @@ fn return_base_directory(gstruct: &GdriveQuery, cse_folder_id: &String, get_base
         return unwrap_new_dir(dir_name_full);
     }
 }
+// return the command for uploading/updating the file
 fn return_upload_or_update_cmd(file_id: &String, parent_id: &String, path: &std::result::Result<std::fs::DirEntry, std::io::Error>) -> std::string::String {
     if !file_id.is_empty() && !is_trashed(&file_id) {
         //println!("{}", file_id);
@@ -323,6 +352,7 @@ fn return_upload_or_update_cmd(file_id: &String, parent_id: &String, path: &std:
         return format!("gdrive upload --parent {} {}", parent_id, path.as_ref().unwrap().path().display());
     }
 }
+// return the current file id 
 fn return_file_id(gstruct: &GdriveQuery, folder_id: &String, path: &std::result::Result<std::fs::DirEntry, std::io::Error>) -> String{
     // short path will be this directory's name on google drive
     // take the last / so its the name of the current folder
@@ -342,13 +372,14 @@ fn return_file_id(gstruct: &GdriveQuery, folder_id: &String, path: &std::result:
         return String::from("")
     }
 }
+// query grdrive trash for search string. Return true if it is there
 fn is_trashed(search_string: &String) -> bool {
     let query_trash_cmd = "gdrive list -q \"trashed\" = true";
     let trash_stdout = Command::new("sh").arg("-c").arg(query_trash_cmd)
         .stdout(Stdio::piped()).output().unwrap();
     let mut trash = String::from_utf8(trash_stdout.stdout).unwrap();
     let trash_query = unwrap_gdrive_query(trash, search_string);
-    return trash_query.is_empty();
+    return trash_query.is_empty(); // if the query returned none, it is not in trash
 }
 // addendum function
 use std::fs::File;
