@@ -35,7 +35,6 @@ struct GdriveQuery {
     update: bool
 }
 
-// TODO: add a share argument that will share the folder with other people
 // TODO: add a feature that auto deletes files that are on drive 
 // but not the uploading directory
 // TODO: if there is a folder in the trash of the same name 
