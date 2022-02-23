@@ -17,10 +17,6 @@ extern crate dotenv;
 // create a hashmap of course names to folder id's
 // if not in hash map, use whatever user entered (could be folder ID)
 fn class_hashmap() -> std::collections::HashMap<&'static str, std::string::String> {
-    //dotenv::dotenv().expect("Failed to read .env file");
-    let dotenv_gloabl = env::var("global_dotenv").unwrap();
-    dotenv::from_path(dotenv_gloabl).expect("Encountered an error reading .env");
-
     let csehashmap = HashMap::from([
         ("160", env::var("UPLOAD160").unwrap()),
         ("projects", env::var("UPLOADp").unwrap()),
@@ -43,6 +39,10 @@ struct GdriveQuery {
 // as a folder that can be updated, it will upload a new one instead 
 // of updating the not-trashed folder
 fn main() {
+    // dotenv
+    let dotenv_global = env::var("UPLOADdotenv").unwrap();
+    dotenv::from_path(dotenv_global).expect("Encountered an error reading .env");
+
     let matches = App::new("Homework Uploader")
         .version("0.1.2")
         .author("Daniel Kogan")
@@ -105,8 +105,9 @@ fn main() {
     
         command_line(&course, &dir, &share, true, get_basedir_str);
     } else { // if not uploading, append 
-        let key = unwrap_keys(matches.value_of("a"), false, true);
-        let value = unwrap_keys(matches.value_of("v"), false, true);
+        //println!("{:?}    {:?}",matches.value_of("key"),matches.value_of("value"));
+        let key = unwrap_keys(matches.value_of("key"), false, true);
+        let value = unwrap_keys(matches.value_of("value"), false, true);
 
         append_envs(key, value);
     }
@@ -392,7 +393,7 @@ fn append_envs(key: &str, value: &str) {
     let green = "\u{001b}[32m";
     let clear_format = "\u{001b}[0m";
     //config
-    let config_file = env::var("global_dotenv").unwrap();
+    let config_file = env::var("UPLOADdotenv").unwrap();
     let config_addendum = format!("{}={}", key, value);
     //commnds
     let append_config_cmd = format!("sudo echo \"{}\" >> {}", config_addendum, config_file);
@@ -401,14 +402,14 @@ fn append_envs(key: &str, value: &str) {
     // update hashmap
     let rust_addendum = format!("        (\"{}\", env::var(\"UPLOAD{}\").unwrap()),", key, key);
     let this_dir = env::var("rs_file").unwrap();
-    let this_file = format!("{}/src/main.rs", &this_dir);
-    let error_message = format!("{}Something went wrong reading the file{}", &red, &clear_format);
+    let this_file = format!("{}", &this_dir);
+    let error_message = format!("{}Unable to read {} {}", &red, &this_file, &clear_format);
     let contents = fs::read_to_string(&this_file)
         .expect(&error_message);
     let mut content_new_lines = contents.lines().collect::<Vec<_>>();
     // format the new_line
-    let new_line = format!("{}\n{}",content_new_lines[23], rust_addendum); // edit the hashmap to add the new appended variable
-    content_new_lines[23] = &new_line[..];
+    let new_line = format!("{}\n{}",content_new_lines[21], rust_addendum); // edit the hashmap to add the new appended variable
+    content_new_lines[21] = &new_line[..];
     
     let mut write_file = File::create(this_file).expect("Error opening file");
     for line in content_new_lines {
