@@ -207,6 +207,7 @@ fn command_line(course: &str, dir: &str, share: &str, base_case: bool, base_dir:
 
         let cmd = return_upload_or_update_cmd(&path_id, &base_dir_id, &path);
         // running this while saving the output auto-terminates process when done
+        
         let output = Command::new("sh").arg("-c").arg(cmd).stdout(Stdio::piped()).output().expect("An error as occured");
         assert!(output.status.success()); // make sure it worked !!
         print!("{}", String::from_utf8(output.stdout).unwrap());
@@ -216,6 +217,7 @@ fn command_line(course: &str, dir: &str, share: &str, base_case: bool, base_dir:
     exit(0);
 }
 fn query_gdrive(folder_id: &String, search_string: &String) -> GdriveQuery {
+    //println!("{}", folder_id);
     let check_gdrive_cmd = format!("gdrive list --query \" \'{}\' in parents \"", folder_id);
     let check_gdrive = Command::new("sh").arg("-c").arg(check_gdrive_cmd).stdout(Stdio::piped()).output().unwrap();
     let mut gdrive_cmd_output = String::from_utf8(check_gdrive.stdout).unwrap();
@@ -376,12 +378,12 @@ fn return_file_id(gstruct: &GdriveQuery, folder_id: &String, path: &std::result:
 }
 // query grdrive trash for search string. Return true if it is there
 fn is_trashed(search_string: &String) -> bool {
-    let query_trash_cmd = "gdrive list -q \"trashed\" = true";
+    let query_trash_cmd = "gdrive list -q \"\"trashed\" = true\"";
     let trash_stdout = Command::new("sh").arg("-c").arg(query_trash_cmd)
         .stdout(Stdio::piped()).output().unwrap();
     let mut trash = String::from_utf8(trash_stdout.stdout).unwrap();
     let trash_query = unwrap_gdrive_query(trash, search_string);
-    return trash_query.is_empty(); // if the query returned none, it is not in trash
+    return !trash_query.is_empty(); // if the query returned none, it is not in trash
 }
 // addendum function
 use std::fs::File;
