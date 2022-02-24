@@ -37,8 +37,9 @@ struct GdriveQuery {
 // but not the uploading directory
 fn main() {
     // dotenv
-    let dotenv_global = env::var("UPLOADdotenv").unwrap();
-    dotenv::from_path(dotenv_global).expect("Encountered an error reading .env");
+    let upload_tool_dotenv = env::var("UPLOADdotenv").unwrap();
+    dotenv::from_path(upload_tool_dotenv).expect("Encountered an error reading .env");
+    // load dotenv required to access the gdrive course hashmap for this project
 
     let matches = App::new("Homework Uploader")
         .version("0.1.2")
@@ -85,7 +86,7 @@ fn main() {
         let red = "\u{001b}[31m";
         let clear_format = "\u{001b}[0m";    
         println!("{} Exiting Program...{}", red, clear_format);
-        exit(0);
+        exit(0); // actually exit program
     })
     .expect("Error setting Ctrl-C handler");
 
@@ -94,7 +95,6 @@ fn main() {
         let course = unwrap_keys(matches.value_of("course"), false, true);
         let dir = unwrap_keys(matches.value_of("directory"), true, false);
         let share = unwrap_keys(matches.value_of("share"), false, false);
-        //println!("{:?}, {:?}", course, dir);
     
         // check name of current directory
         let get_basedir_cmd = format!("echo $(basename \"$PWD\")");
@@ -102,11 +102,9 @@ fn main() {
         let mut get_basedir_str = String::from_utf8(get_basedir_spawn.stdout).unwrap();
     
         command_line(&course, &dir, &share, true, get_basedir_str);
-    } else { // if not uploading, append 
-        //println!("{:?}    {:?}",matches.value_of("key"),matches.value_of("value"));
+    } else { // if not uploading, we must be appending
         let key = unwrap_keys(matches.value_of("key"), false, true);
         let value = unwrap_keys(matches.value_of("value"), false, true);
-
         append_envs(key, value);
     }
 }
@@ -201,8 +199,6 @@ fn command_line(course: &str, dir: &str, share: &str, base_case: bool, base_dir:
         // find the file id. pipe in the id of the current drive directory in order to query it
         let file_id = return_file_id(&result_struct, &result_struct.id, &path);
         let path_id = unwrap_file_id(&file_id);
-        //println!("{}, {}", file_id, path_id);
-        //println!("{:?}", result_struct);
 
         let cmd = return_upload_or_update_cmd(&path_id, &base_dir_id, &path);
         // running this while saving the output auto-terminates process when done
@@ -363,8 +359,6 @@ fn return_file_id(gstruct: &GdriveQuery, folder_id: &String, path: &std::result:
     // take the last / so its the name of the current folder
     let short_path = path.as_ref().unwrap().path().display().to_string();
     let short_path = short_path.split("/").last().unwrap();
-    //println!("{:?}", gstruct);
-
     if gstruct.update {
         //println!("I am Querying: {}", short_path);
         let file_query = query_gdrive(folder_id, &String::from(short_path));
@@ -450,7 +444,6 @@ fn append_envs(key: &str, value: &str) {
     for line in content_new_lines {
         writeln!(&write_file, "{}", line).unwrap();
     }
-
     let update_program_cmd = format!("cd {} && ./update ", &this_dir);
     let run_update = Command::new("sh").arg("-c").arg(update_program_cmd).stdout(Stdio::piped()).output().unwrap();
     println!("{}Processes completed ✅{}", &green, &clear_format);
