@@ -87,7 +87,8 @@ fn main() {
     ctrlc::set_handler(move || { // exit program early
         let red = "\u{001b}[31m";
         let clear_format = "\u{001b}[0m";    
-        println!("{}Exiting Program...{}", red, clear_format);
+        println!("{} Exiting Program...{}", red, clear_format);
+        exit(0);
     })
     .expect("Error setting Ctrl-C handler");
 
@@ -382,8 +383,10 @@ fn is_trashed(search_string: &String, prompt: bool) -> bool {
     let trash_query = gdrive_trash_query(&search_string);
     if !trash_query.is_empty() && prompt {
         let gray_col = "\u{001b}[90m";
-        let clear_format = "\u{001b}[0m";    
-        print!("It seems that {} is in your drive trash. Delete? {}(Y/n){}  ", search_string.trim_end(), gray_col, clear_format);
+        let yellow = "\u{001b}[33m";
+        let clear_format = "\u{001b}[0m";
+        let user_readable_output = format!("{}{}{}", yellow, search_string.trim_end(),clear_format);
+        print!("It seems that {} is in your drive trash. Delete? {}(Y/n){}  ", user_readable_output, gray_col, clear_format);
         std::io::stdout().flush().unwrap();
         if (return_user_input().to_uppercase() == String::from("Y")) {
             let trashed_file_id = unwrap_gdrive_query_results(&trash_query); // we want to unwrap
@@ -412,7 +415,6 @@ fn return_user_input() -> String {
     std::io::stdin()
     .read_line(&mut input_output)
     .unwrap();
-    
     return input_output.trim().to_string()
 }
 // addendum function
