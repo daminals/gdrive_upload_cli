@@ -289,8 +289,10 @@ fn unwrap_dot_driveignore() -> std::string::String {
 fn unwrap_gdrive_query(cmd_output: String, search_string: &String) -> String {
     let mut split_output_lines = cmd_output.lines().skip(1).collect::<Vec<_>>();
     for item in split_output_lines {
-        //println!("{}", item);
-        if item.contains(search_string.trim_end()) {
+        // do this so that it wont flag a search that our search is a substring of
+        // exact terms only
+        let search_term = format!("{} ", search_string.trim_end()); 
+        if item.contains(&search_term) {
                 // strip the string to just the id from this
                 return String::from(item);
         }
@@ -401,6 +403,8 @@ fn is_trashed(search_string: &String, prompt: bool) -> bool {
     return !trash_query.is_empty(); // if the query returned none, it is not in trash
 }
 // return the result from the trash query
+// when this program runs it will output all trashed files in drive
+// and return the first match with the name of the search string
 fn gdrive_trash_query(search_string: &String) -> String {
     let query_trash_cmd = "gdrive list -q \"\"trashed\" = true\"";
     let trash_stdout = Command::new("sh").arg("-c").arg(&query_trash_cmd)
@@ -411,11 +415,11 @@ fn gdrive_trash_query(search_string: &String) -> String {
 }
 // prompt user
 fn return_user_input() -> String {
-    let mut input_output = String::new();
+    let mut user_input = String::new();
     std::io::stdin()
-    .read_line(&mut input_output)
+    .read_line(&mut user_input)
     .unwrap();
-    return input_output.trim().to_string()
+    return user_input.trim().to_string() // disregard the newline character from end
 }
 // addendum function
 use std::fs::File;
