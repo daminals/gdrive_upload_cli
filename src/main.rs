@@ -35,9 +35,6 @@ struct GdriveQuery {
 
 // TODO: add a feature that auto deletes files that are on drive 
 // but not the uploading directory
-// TODO: if there is a folder in the trash of the same name 
-// as a folder that can be updated, it will upload a new one instead 
-// of updating the not-trashed folder
 fn main() {
     // dotenv
     let dotenv_global = env::var("UPLOADdotenv").unwrap();
