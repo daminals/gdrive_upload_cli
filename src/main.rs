@@ -127,8 +127,10 @@ fn command_line(course: &str, dir: &str, share: &str, base_case: bool, base_dir:
     let dot_driveignore = unwrap_dot_driveignore();
     let dot_driveignore = dot_driveignore.lines().collect::<Vec<_>>();
     // return the proper gdrive query struct
+    is_trashed(&base_dir, *&base_case); // check if trashed before setting struct to 
+    //                                   preserve result struct integrity
     let result_struct = query_gdrive(&cse_folder_id, &base_dir);
-    if result_struct.update && !is_trashed(&base_dir) {
+    if result_struct.update && !is_trashed(&base_dir, false) {
         print!("{}Updating Google Folder: {}  ⏳{}\n", &yellow, &base_dir.trim(), &clear_format);
     } else {
         print!("{}Uploading Google Folder: {}  ⏳{}\n", &yellow, &base_dir.trim(), &clear_format);
@@ -180,7 +182,7 @@ fn command_line(course: &str, dir: &str, share: &str, base_case: bool, base_dir:
             let sub_result_struct = query_gdrive( &base_dir_id, &String::from(short_path));
 
             // update or upload
-            if sub_result_struct.update && !is_trashed(&base_dir) {
+            if sub_result_struct.update && !is_trashed(&base_dir, false) {
                 command_line(&base_dir_id, full_path, "", false, String::from(format!("{}\n",short_path)));
             } else {
                 // upload new folder to the created gdrive folder (not course folder)
@@ -189,7 +191,6 @@ fn command_line(course: &str, dir: &str, share: &str, base_case: bool, base_dir:
                 let subdir = Command::new("sh").arg("-c").arg(create_cmd).stdout(Stdio::piped()).output().unwrap();
                 assert!(subdir.status.success()); // make sure it worked !!
                 let mut subdir_name_full = String::from_utf8(subdir.stdout).unwrap();
-                print!("{}", subdir_name_full);
                 
                 // take the new directory ID to upload to it, use full path as location
                 let subdir_id = unwrap_new_dir(subdir_name_full);
@@ -208,7 +209,7 @@ fn command_line(course: &str, dir: &str, share: &str, base_case: bool, base_dir:
         let cmd = return_upload_or_update_cmd(&path_id, &base_dir_id, &path);
         // running this while saving the output auto-terminates process when done
         
-        let output = Command::new("sh").arg("-c").arg(cmd).stdout(Stdio::piped()).output().expect("An error as occured");
+        let output = Command::new("sh").arg("-c").arg(&cmd).stdout(Stdio::piped()).output().expect("An error as occured");
         assert!(output.status.success()); // make sure it worked !!
         print!("{}", String::from_utf8(output.stdout).unwrap());
     }
@@ -338,7 +339,7 @@ fn return_base_directory(gstruct: &GdriveQuery, cse_folder_id: &String, get_base
     if !base_case {
         return cse_folder_id.to_owned();
     }
-    if gstruct.update  && !is_trashed(&cse_folder_id){
+    if gstruct.update  && !is_trashed(&cse_folder_id, false){
         return gstruct.id.to_owned();
     } else {
         let create_base_dir = format!("gdrive mkdir --parent {} {}", cse_folder_id, get_basedir_str); // NOTE: second var has trailing whitespace -- be careful when updating code
@@ -349,7 +350,7 @@ fn return_base_directory(gstruct: &GdriveQuery, cse_folder_id: &String, get_base
 }
 // return the command for uploading/updating the file
 fn return_upload_or_update_cmd(file_id: &String, parent_id: &String, path: &std::result::Result<std::fs::DirEntry, std::io::Error>) -> std::string::String {
-    if !file_id.is_empty() && !is_trashed(&file_id) {
+    if !file_id.is_empty() && !is_trashed(&file_id, false) {
         //println!("{}", file_id);
         return format!("gdrive update {} {}", file_id, path.as_ref().unwrap().path().display());
     } else {
@@ -377,13 +378,42 @@ fn return_file_id(gstruct: &GdriveQuery, folder_id: &String, path: &std::result:
     }
 }
 // query grdrive trash for search string. Return true if it is there
-fn is_trashed(search_string: &String) -> bool {
+fn is_trashed(search_string: &String, prompt: bool) -> bool {
+    let trash_query = gdrive_trash_query(&search_string);
+    if !trash_query.is_empty() && prompt {
+        let gray_col = "\u{001b}[90m";
+        let clear_format = "\u{001b}[0m";    
+        print!("It seems that {} is in your drive trash. Delete? {}(Y/n){}  ", search_string.trim_end(), gray_col, clear_format);
+        std::io::stdout().flush().unwrap();
+        if (return_user_input().to_uppercase() == String::from("Y")) {
+            let trashed_file_id = unwrap_gdrive_query_results(&trash_query); // we want to unwrap
+            // the trashed file into a usable format for deletion
+            let delete_trash_cmd = format!("gdrive delete -r {}", trashed_file_id.id);
+            let delete_trash_stdout = Command::new("sh").arg("-c").arg(delete_trash_cmd)
+                .stdout(Stdio::piped()).output().unwrap();
+            println!("{}", String::from_utf8(delete_trash_stdout.stdout).unwrap());
+            is_trashed(&search_string, true);
+        } 
+    } // even if file is deleted, we dont want to update file, but upload a new version
+    return !trash_query.is_empty(); // if the query returned none, it is not in trash
+}
+// return the result from the trash query
+fn gdrive_trash_query(search_string: &String) -> String {
     let query_trash_cmd = "gdrive list -q \"\"trashed\" = true\"";
-    let trash_stdout = Command::new("sh").arg("-c").arg(query_trash_cmd)
-        .stdout(Stdio::piped()).output().unwrap();
+    let trash_stdout = Command::new("sh").arg("-c").arg(&query_trash_cmd)
+    .stdout(Stdio::piped()).output().unwrap();
     let mut trash = String::from_utf8(trash_stdout.stdout).unwrap();
     let trash_query = unwrap_gdrive_query(trash, search_string);
-    return !trash_query.is_empty(); // if the query returned none, it is not in trash
+    return trash_query;
+}
+// prompt user
+fn return_user_input() -> String {
+    let mut input_output = String::new();
+    std::io::stdin()
+    .read_line(&mut input_output)
+    .unwrap();
+    
+    return input_output.trim().to_string()
 }
 // addendum function
 use std::fs::File;
