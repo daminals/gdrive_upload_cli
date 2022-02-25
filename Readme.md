@@ -1,6 +1,6 @@
 ![github repo badge: Language](https://img.shields.io/badge/Language-Rust-181717?color=orange) ![github repo badge: Using](https://img.shields.io/badge/Using-gdrive-181717?color=blue)
 
-# Upload
+# Serverside Gdrive Uploader 0.1.2
 
 A commmand line tool for uploading homework coded on the dcloud server onto specific google drive course folders.
 
