@@ -17,6 +17,7 @@ extern crate dotenv;
 // import from self
 mod append;
 mod unwrap;
+mod share;
 use unwrap::*;
 
 // create a hashmap of course names to folder id's
@@ -114,7 +115,6 @@ fn command_line(course: &str, dir: &str, share: &str, base_case: bool, base_dir:
     // dir: which directory to upload
     let paths = fs::read_dir(dir).unwrap();
     let cse_folder_id = return_parent(course);
-    let share_to = unwrap_share(&share);
     // dot_driveignore
     let dot_driveignore = unwrap_dot_driveignore();
     let dot_driveignore = dot_driveignore.lines().collect::<Vec<_>>();
@@ -130,13 +130,8 @@ fn command_line(course: &str, dir: &str, share: &str, base_case: bool, base_dir:
     // make gdrive dir to upload to here
     let base_dir_id = return_base_directory(&result_struct, &cse_folder_id, &base_dir, base_case);
     // shares base drive with the specified users...
-    if !(share == "") { // if share is not empty...
-        for email in share_to {
-            let share_cmd = format!("gdrive share --type user --role writer --email {} {}", email, &base_dir_id);
-            let share_execute_cmd = Command::new("sh").arg("-c").arg(share_cmd).stdout(Stdio::piped()).output().unwrap();
-            println!("Directory shared with: {}{}{}", &green, &email, &clear_format);
-        }
-    }
+    share::share(&share, &base_dir_id);
+
     for path in paths {
         let readable_path = path.as_ref().unwrap().path().display().to_string();
         // write some tests
@@ -237,10 +232,6 @@ fn check_uploading(course: Option<&str>, add: Option<&str>, value: Option<&str>)
     } else {
         panic!("Too many arguments");
     }
-}
-// unwrap share cli argument
-fn unwrap_share(share: &str) -> Vec<&str> {
-    return share.split(",").collect::<Vec<&str>>();
 }
 // return the new parent directory when creating a google folder
 fn return_parent(fname: &str) -> std::string::String {
