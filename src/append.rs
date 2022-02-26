@@ -1,4 +1,7 @@
 // addendum function
+// Daniel Kogan
+// 02.25.2022
+
 use std::fs::File;
 use std::io::Write;
 use std::{env, fs};
