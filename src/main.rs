@@ -4,15 +4,18 @@
 
 #![allow(unused)]
 
+// import external
 use clap::{App, Arg};
-use std::fmt;
-use std::fs;
+use std::{fmt, fs, env};
+use std::io::Write;
 use std::fs::metadata;
 use std::path::Path;
 use std::process::{Command, Stdio, exit};
-use std::env;
 use std::collections::HashMap;
 extern crate dotenv;
+
+// import from self
+mod append;
 
 // create a hashmap of course names to folder id's
 // if not in hash map, use whatever user entered (could be folder ID)
@@ -105,7 +108,7 @@ fn main() {
     } else { // if not uploading, we must be appending
         let key = unwrap_keys(matches.value_of("key"), false, true);
         let value = unwrap_keys(matches.value_of("value"), false, true);
-        append_envs(key, value);
+        append::append_envs(key, value);
     }
 }
 // upload function
@@ -411,40 +414,4 @@ fn return_user_input() -> String {
     .read_line(&mut user_input)
     .unwrap();
     return user_input.trim().to_string() // disregard the newline character from end
-}
-// addendum function
-use std::fs::File;
-use std::io::Write;
-
-fn append_envs(key: &str, value: &str) {
-    // colors
-    let red = "\u{001b}[31m";
-    let green = "\u{001b}[32m";
-    let clear_format = "\u{001b}[0m";
-    //config
-    let config_file = env::var("UPLOADdotenv").unwrap();
-    let config_addendum = format!("{}={}", key, value);
-    //commnds
-    let append_config_cmd = format!("sudo echo \"{}\" >> {}", config_addendum, config_file);
-    let spawn_append_cmd = Command::new("sh").arg("-c").arg(append_config_cmd).stdout(Stdio::piped()).output().unwrap();
-    //let output = String::from_utf8(spawn_append_cmd.stdout).unwrap();
-    // update hashmap
-    let rust_addendum = format!("        (\"{}\", env::var(\"UPLOAD{}\").unwrap()),", key, key);
-    let this_dir = env::var("rs_file").unwrap();
-    let this_file = format!("{}", &this_dir);
-    let error_message = format!("{}Unable to read {} {}", &red, &this_file, &clear_format);
-    let contents = fs::read_to_string(&this_file)
-        .expect(&error_message);
-    let mut content_new_lines = contents.lines().collect::<Vec<_>>();
-    // format the new_line
-    let new_line = format!("{}\n{}",content_new_lines[21], rust_addendum); // edit the hashmap to add the new appended variable
-    content_new_lines[21] = &new_line[..];
-    
-    let mut write_file = File::create(this_file).expect("Error opening file");
-    for line in content_new_lines {
-        writeln!(&write_file, "{}", line).unwrap();
-    }
-    let update_program_cmd = format!("cd {} && ./update ", &this_dir);
-    let run_update = Command::new("sh").arg("-c").arg(update_program_cmd).stdout(Stdio::piped()).output().unwrap();
-    println!("{}Processes completed ✅{}", &green, &clear_format);
 }
