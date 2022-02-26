@@ -89,9 +89,9 @@ fn main() {
 
     if (check_uploading(matches.value_of("course"), matches.value_of("key"), matches.value_of("value"))) {
         // if uploading, do this
-        let course = unwrap_keys(matches.value_of("course"), false, true);
-        let dir = unwrap_keys(matches.value_of("directory"), true, false);
-        let share = unwrap_keys(matches.value_of("share"), false, false);
+        let course = unwrap::unwrap_keys(matches.value_of("course"), false, true);
+        let dir = unwrap::unwrap_keys(matches.value_of("directory"), true, false);
+        let share = unwrap::unwrap_keys(matches.value_of("share"), false, false);
     
         // check name of current directory
         let get_basedir_cmd = format!("echo $(basename \"$PWD\")");
@@ -100,8 +100,8 @@ fn main() {
     
         command_line(&course, &dir, &share, true, get_basedir_str);
     } else { // if not uploading, we must be appending
-        let key = unwrap_keys(matches.value_of("key"), false, true);
-        let value = unwrap_keys(matches.value_of("value"), false, true);
+        let key = unwrap::unwrap_keys(matches.value_of("key"), false, true);
+        let value = unwrap::unwrap_keys(matches.value_of("value"), false, true);
         append::append_envs(key, value);
     }
 }
@@ -116,12 +116,12 @@ fn command_line(course: &str, dir: &str, share: &str, base_case: bool, base_dir:
     let paths = fs::read_dir(dir).unwrap();
     let cse_folder_id = return_parent(course);
     // dot_driveignore
-    let dot_driveignore = unwrap_dot_driveignore();
+    let dot_driveignore = unwrap::unwrap_dot_driveignore();
     let dot_driveignore = dot_driveignore.lines().collect::<Vec<_>>();
     // return the proper gdrive query struct
-    is_trashed(&base_dir, *&base_case); // check if trashed before setting struct to 
+    unwrap::is_trashed(&base_dir, *&base_case); // check if trashed before setting struct to 
     //                                   preserve result struct integrity
-    let result_struct = query_gdrive(&cse_folder_id, &base_dir);
+    let result_struct = unwrap::query_gdrive(&cse_folder_id, &base_dir);
     if result_struct.update && !is_trashed(&base_dir, false) {
         print!("{}Updating Google Folder: {}  ⏳{}\n", &yellow, &base_dir.trim(), &clear_format);
     } else {
@@ -166,7 +166,7 @@ fn command_line(course: &str, dir: &str, share: &str, base_case: bool, base_dir:
 
             // these functions are for checking if subfolder already exists
             //println!("Querying for {}", short_path);
-            let sub_result_struct = query_gdrive( &base_dir_id, &String::from(short_path));
+            let sub_result_struct = unwrap::query_gdrive( &base_dir_id, &String::from(short_path));
 
             // update or upload
             if sub_result_struct.update && !is_trashed(&base_dir, false) {
@@ -180,7 +180,7 @@ fn command_line(course: &str, dir: &str, share: &str, base_case: bool, base_dir:
                 let mut subdir_name_full = String::from_utf8(subdir.stdout).unwrap();
                 
                 // take the new directory ID to upload to it, use full path as location
-                let subdir_id = unwrap_new_dir(subdir_name_full);
+                let subdir_id = unwrap::unwrap_new_dir(subdir_name_full);
                 command_line(&subdir_id, full_path, "", false, String::from(&base_dir));
             }
             continue;
@@ -188,8 +188,8 @@ fn command_line(course: &str, dir: &str, share: &str, base_case: bool, base_dir:
 
         // if it finally meets all conditions, upload or update the current file
         // find the file id. pipe in the id of the current drive directory in order to query it
-        let file_id = return_file_id(&result_struct, &result_struct.id, &path);
-        let path_id = unwrap_file_id(&file_id);
+        let file_id = unwrap::return_file_id(&result_struct, &result_struct.id, &path);
+        let path_id = unwrap::unwrap_file_id(&file_id);
 
         let cmd = return_upload_or_update_cmd(&path_id, &base_dir_id, &path);
         // running this while saving the output auto-terminates process when done
@@ -203,21 +203,6 @@ fn command_line(course: &str, dir: &str, share: &str, base_case: bool, base_dir:
     exit(0);
 }
 // unwrappers 
-// read cli arguments
-fn unwrap_keys(keyword: Option<&str>, dir: bool, mandatory: bool) -> &str {
-    // if no folder name, set it to folder name of where command is run from
-    if !keyword.is_none() {
-        return keyword.unwrap();
-    } else {
-        if dir {
-            return ".";
-        } else if (mandatory) {
-            panic!("No keyword provided")
-        } else {
-            return "";
-        }
-    }
-}
 // determine if the program should be uploading new files or updating old ones
 fn check_uploading(course: Option<&str>, add: Option<&str>, value: Option<&str>) -> bool {
     if (add.is_none() != value.is_none()) {

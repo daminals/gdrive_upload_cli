@@ -22,6 +22,22 @@ pub struct GdriveQuery {
     pub update: bool
 }
 
+// read cli arguments
+pub fn unwrap_keys(keyword: Option<&str>, dir: bool, mandatory: bool) -> &str {
+    // if no folder name, set it to folder name of where command is run from
+    if !keyword.is_none() {
+        return keyword.unwrap();
+    } else {
+        if dir {
+            return ".";
+        } else if (mandatory) {
+            panic!("No keyword provided")
+        } else {
+            return "";
+        }
+    }
+}
+
 // search for folders in base directory
 pub fn query_gdrive(folder_id: &String, search_string: &String) -> GdriveQuery {
     //println!("{}", folder_id);
