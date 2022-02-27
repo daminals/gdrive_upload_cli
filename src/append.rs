@@ -7,6 +7,8 @@ use std::io::Write;
 use std::{env, fs};
 use std::process::{Command, Stdio, exit};
 
+static APPEND_NUM: usize = 33;
+
 pub fn append_envs(key: &str, value: &str) {
     // colors
     let red = "\u{001b}[31m";
@@ -28,8 +30,8 @@ pub fn append_envs(key: &str, value: &str) {
         .expect(&error_message);
     let mut content_new_lines = contents.lines().collect::<Vec<_>>();
     // format the new_line
-    let new_line = format!("{}\n{}",content_new_lines[24], rust_addendum); // edit the hashmap to add the new appended variable
-    content_new_lines[24] = &new_line[..];
+    let new_line = format!("{}\n{}",content_new_lines[APPEND_NUM], rust_addendum); // edit the hashmap to add the new appended variable
+    content_new_lines[APPEND_NUM] = &new_line[..];
     
     let mut write_file = File::create(this_file).expect("Error opening file");
     for line in content_new_lines {

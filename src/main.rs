@@ -20,6 +20,12 @@ mod unwrap;
 mod share;
 use unwrap::*;
 
+// colors for readable outputs
+static RED: &str = "\u{001b}[31m";
+static GREEN: &str = "\u{001b}[32m";
+static YELLOW: &str = "\u{001b}[33m";
+static CLEAR_FORMAT: &str = "\u{001b}[0m";
+
 // create a hashmap of course names to folder id's
 // if not in hash map, use whatever user entered (could be folder ID)
 fn class_hashmap() -> std::collections::HashMap<&'static str, std::string::String> {
@@ -80,9 +86,7 @@ fn main() {
         .get_matches();
 
     ctrlc::set_handler(move || { // exit program early
-        let red = "\u{001b}[31m";
-        let clear_format = "\u{001b}[0m";    
-        println!("{} Exiting Program...{}", red, clear_format);
+        println!("{} Exiting Program...{}", RED, CLEAR_FORMAT);
         exit(0); // actually exit program
     })
     .expect("Error setting Ctrl-C handler");
@@ -107,10 +111,6 @@ fn main() {
 }
 // upload function
 fn command_line(course: &str, dir: &str, share: &str, base_case: bool, base_dir: String) {
-    // colors 
-    let yellow = "\u{001b}[33m";
-    let green = "\u{001b}[32m";
-    let clear_format = "\u{001b}[0m";
     // course: look up in hashmap if coursename matches a class ID
     // dir: which directory to upload
     let paths = fs::read_dir(dir).unwrap();
@@ -123,9 +123,9 @@ fn command_line(course: &str, dir: &str, share: &str, base_case: bool, base_dir:
     //                                   preserve result struct integrity
     let result_struct = unwrap::query_gdrive(&cse_folder_id, &base_dir);
     if result_struct.update && !is_trashed(&base_dir, false) {
-        print!("{}Updating Google Folder: {}  ⏳{}\n", &yellow, &base_dir.trim(), &clear_format);
+        print!("{}Updating Google Folder: {}  ⏳{}\n", YELLOW, &base_dir.trim(), CLEAR_FORMAT);
     } else {
-        print!("{}Uploading Google Folder: {}  ⏳{}\n", &yellow, &base_dir.trim(), &clear_format);
+        print!("{}Uploading Google Folder: {}  ⏳{}\n", YELLOW, &base_dir.trim(), CLEAR_FORMAT);
     }
     // make gdrive dir to upload to here
     let base_dir_id = return_base_directory(&result_struct, &cse_folder_id, &base_dir, base_case);
@@ -194,12 +194,15 @@ fn command_line(course: &str, dir: &str, share: &str, base_case: bool, base_dir:
         let cmd = return_upload_or_update_cmd(&path_id, &base_dir_id, &path);
         // running this while saving the output auto-terminates process when done
         
-        let output = Command::new("sh").arg("-c").arg(&cmd).stdout(Stdio::piped()).output().expect("An error as occured");
+        // error message formatting  
+        let error_message = format!("{} error sending file to gdrive {}", RED, CLEAR_FORMAT);
+        // upload / update command
+        let output = Command::new("sh").arg("-c").arg(&cmd).stdout(Stdio::piped()).output().expect(&error_message);
         assert!(output.status.success()); // make sure it worked !!
         print!("{}", String::from_utf8(output.stdout).unwrap());
     }
     //end process
-    println!("{}Processes completed ✅{}", &green, &clear_format);
+    println!("{}Processes completed ✅{}", GREEN, CLEAR_FORMAT);
     exit(0);
 }
 // program-specific unwrappers 

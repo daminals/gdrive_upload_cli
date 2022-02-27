@@ -153,9 +153,11 @@ pub fn return_file_id(gstruct: &GdriveQuery, folder_id: &String, path: &std::res
 pub fn is_trashed(search_string: &String, prompt: bool) -> bool {
     let trash_query = gdrive_trash_query(&search_string);
     if !trash_query.is_empty() && prompt {
+        // colors for readable output
         let gray_col = "\u{001b}[90m";
         let yellow = "\u{001b}[33m";
         let clear_format = "\u{001b}[0m";
+        // trash function
         let user_readable_output = format!("{}{}{}", yellow, search_string.trim_end(),clear_format);
         print!("It seems that {} is in your drive trash. Delete? {}(Y/n){}  ", user_readable_output, gray_col, clear_format);
         std::io::stdout().flush().unwrap();
