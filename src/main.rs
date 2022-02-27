@@ -206,11 +206,14 @@ fn command_line(course: &str, dir: &str, share: &str, base_case: bool, base_dir:
 // determine if the program should be uploading new files or updating old ones
 fn check_uploading(course: Option<&str>, add: Option<&str>, value: Option<&str>) -> bool {
     if (add.is_none() != value.is_none()) {
+        // add and value need each other to exist
         panic!("Var name and value belong together shawty 💔");
     }
     if (course.is_none() && !add.is_none()) {
+        // not uploading
         return false;
     } else if (add.is_none() && !course.is_none()) {
+        // yes uploading
         return true;
     } else if (add.is_none() && course.is_none()) {
         panic!("No keywords provided");
