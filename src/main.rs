@@ -202,7 +202,7 @@ fn command_line(course: &str, dir: &str, share: &str, base_case: bool, base_dir:
     println!("{}Processes completed ✅{}", &green, &clear_format);
     exit(0);
 }
-// unwrappers 
+// program-specific unwrappers 
 // determine if the program should be uploading new files or updating old ones
 fn check_uploading(course: Option<&str>, add: Option<&str>, value: Option<&str>) -> bool {
     if (add.is_none() != value.is_none()) {
