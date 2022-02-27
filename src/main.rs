@@ -121,7 +121,7 @@ fn command_line(course: &str, dir: &str, share: &str, base_case: bool, base_dir:
     // return the proper gdrive query struct
     unwrap::is_trashed(&base_dir, *&base_case); // check if trashed before setting struct to 
     //                                   preserve result struct integrity
-    let result_struct = unwrap::query_gdrive(&cse_folder_id, &base_dir);
+    let result_struct = GdriveQuery::query(&cse_folder_id, &base_dir);
     if result_struct.update && !is_trashed(&base_dir, false) {
         print!("{}Updating Google Folder: {}  ⏳{}\n", YELLOW, &base_dir.trim(), CLEAR_FORMAT);
     } else {
@@ -166,7 +166,7 @@ fn command_line(course: &str, dir: &str, share: &str, base_case: bool, base_dir:
 
             // these functions are for checking if subfolder already exists
             //println!("Querying for {}", short_path);
-            let sub_result_struct = unwrap::query_gdrive( &base_dir_id, &String::from(short_path));
+            let sub_result_struct = GdriveQuery::query( &base_dir_id, &String::from(short_path));
 
             // update or upload
             if sub_result_struct.update && !is_trashed(&base_dir, false) {
@@ -188,8 +188,7 @@ fn command_line(course: &str, dir: &str, share: &str, base_case: bool, base_dir:
 
         // if it finally meets all conditions, upload or update the current file
         // find the file id. pipe in the id of the current drive directory in order to query it
-        let file_id = unwrap::return_file_id(&result_struct, &result_struct.id, &path);
-        let path_id = unwrap::unwrap_file_id(&file_id);
+        let path_id = FileId::get(&result_struct, &result_struct.id, &path);
 
         let cmd = return_upload_or_update_cmd(&path_id, &base_dir_id, &path);
         // running this while saving the output auto-terminates process when done
