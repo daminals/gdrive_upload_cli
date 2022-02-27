@@ -25,6 +25,8 @@ static RED: &str = "\u{001b}[31m";
 static GREEN: &str = "\u{001b}[32m";
 static YELLOW: &str = "\u{001b}[33m";
 static CLEAR_FORMAT: &str = "\u{001b}[0m";
+static UNDERLINE: &str = "\u{001b}[4m";
+
 
 // create a hashmap of course names to folder id's
 // if not in hash map, use whatever user entered (could be folder ID)
@@ -41,6 +43,7 @@ fn class_hashmap() -> std::collections::HashMap<&'static str, std::string::Strin
 fn main() {
     // dotenv
     let upload_tool_dotenv = env::var("UPLOADdotenv").unwrap();
+    let dotenv_error = format!("{}Encountered an error reading {}.env{}", RED, UNDERLINE, CLEAR_FORMAT);
     dotenv::from_path(upload_tool_dotenv).expect("Encountered an error reading .env");
     // load dotenv required to access the gdrive course hashmap for this project
 
@@ -93,9 +96,9 @@ fn main() {
 
     if (check_uploading(matches.value_of("course"), matches.value_of("key"), matches.value_of("value"))) {
         // if uploading, do this
-        let course = unwrap::unwrap_keys(matches.value_of("course"), false, true);
-        let dir = unwrap::unwrap_keys(matches.value_of("directory"), true, false);
-        let share = unwrap::unwrap_keys(matches.value_of("share"), false, false);
+        let course = unwrap::unwrap_keys(matches.value_of("course"), true);
+        let dir = matches.value_of("directory").unwrap_or(".");
+        let share = unwrap::unwrap_keys(matches.value_of("share"), false);
     
         // check name of current directory
         let get_basedir_cmd = format!("echo $(basename \"$PWD\")");
@@ -104,8 +107,8 @@ fn main() {
     
         command_line(&course, &dir, &share, true, get_basedir_str);
     } else { // if not uploading, we must be appending
-        let key = unwrap::unwrap_keys(matches.value_of("key"), false, true);
-        let value = unwrap::unwrap_keys(matches.value_of("value"), false, true);
+        let key = unwrap::unwrap_keys(matches.value_of("key"), true);
+        let value = unwrap::unwrap_keys(matches.value_of("value"), true);
         append::append_envs(key, value);
     }
 }

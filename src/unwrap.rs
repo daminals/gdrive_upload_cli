@@ -63,8 +63,7 @@ pub struct FileId {
 }
 
 impl FileId {
-    // private implementations (not needed for external functions)
-
+    // ~~~ private implementations (not needed for external functions) ~~~
     // safely unwrap the drive file's id
     fn unwrap(&self) -> FileId {
         if self.id.is_empty() {
@@ -95,8 +94,7 @@ impl FileId {
 }
 
 impl FileId {
-    // public implementations
-
+    // ~~~ public implementations ~~~
     // get the file id as a string from parameters
     pub fn get(gstruct: &GdriveQuery, folder_id: &String, path: &std::result::Result<std::fs::DirEntry, std::io::Error>) -> String {
         let file_id = FileId::return_file_id(gstruct, folder_id, path);
@@ -115,21 +113,18 @@ fn convert_string_ref(borrowed_string: &str) -> String {
 }
 
 // read cli arguments
-pub fn unwrap_keys(keyword: Option<&str>, dir: bool, mandatory: bool) -> &str {
+pub fn unwrap_keys(keyword: Option<&str>, mandatory: bool) -> &str {
     // if no folder name, set it to folder name of where command is run from
     if !keyword.is_none() {
         return keyword.unwrap();
     } else {
-        if dir {
-            return ".";
-        } else if (mandatory) {
+        if (mandatory) {
             panic!("No keyword provided")
         } else {
             return "";
         }
     }
 }
-
 
 // strip directory string so only the gdrive ID is left
 pub fn unwrap_new_dir(mut directory: String) -> std::string::String {
@@ -168,7 +163,6 @@ pub fn unwrap_gdrive_query(cmd_output: String, search_string: &String) -> String
     return String::from("");
 }
 
-
 // return the command for uploading/updating the file
 pub fn return_upload_or_update_cmd(file_id: &String, parent_id: &String, path: &std::result::Result<std::fs::DirEntry, std::io::Error>) -> std::string::String {
     if !file_id.is_empty() && !is_trashed(&file_id, false) {
@@ -179,8 +173,7 @@ pub fn return_upload_or_update_cmd(file_id: &String, parent_id: &String, path: &
     }
 }
 
-
-// GDRIVE TRASH RELATED COMMANDS
+// ~~~ GDRIVE TRASH RELATED COMMANDS ~~~
 
 // query grdrive trash for search string. Return true if it is there
 pub fn is_trashed(search_string: &String, prompt: bool) -> bool {
@@ -219,7 +212,7 @@ pub fn gdrive_trash_query(search_string: &String) -> String {
     return trash_query;
 }
 
-// USER INPUT
+// ~~~ USER INPUT ~~~
 
 // prompt user
 pub fn return_user_input() -> String {
