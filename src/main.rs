@@ -5,7 +5,7 @@
 #![allow(unused)]
 
 // import external
-use clap::Arg;
+use clap::{Arg, Subcommand};
 use clap::Command as cliCommand;
 use std::{fmt, fs, env};
 use std::io::Write;
@@ -49,43 +49,54 @@ fn main() {
     // load dotenv required to access the gdrive course hashmap for this project
 
     let matches = cliCommand::new("Homework Uploader")
-        .version("0.1.2")
+        .version("0.1.3")
         .author("Daniel Kogan")
+        .subcommand_required(true)
+        .arg_required_else_help(true)
         .about("Uploads my directories to my google drive")
-        .arg(
-            Arg::new("course") // which course to upload to
-                .short('c') // will check hashmap for drive folder id
-                .long("course")
+        .subcommand(
+            cliCommand::new("u")
+            .about("Uploads directories to gdrive")
+            // arguments required in order to
+            // execute the directory upload command
+            .arg(
+                Arg::new("course") // which course to upload to
+                    .short('c') // will check hashmap for drive folder id
+                    .long("course")
+                    .takes_value(true)
+                    .help("Stony Brook Course Number"),
+            )
+            .arg(
+                Arg::new("directory") // which directory to upload
+                    .short('d') // default is .
+                    .long("dir")
+                    .takes_value(true)
+                    .help("What directory should I upload?"),
+            ).arg(
+                Arg::new("share") // share
+                .short('s')
+                .long("share")
                 .takes_value(true)
-                .help("Stony Brook Course Number"),
+                .help("Add emails to share directory to, seperate by comma")
+            )
         )
-        .arg(
-            Arg::new("directory") // which directory to upload
-                .short('d') // default is .
-                .long("dir")
-                .takes_value(true)
-                .help("What directory should I upload?"),
-        )
-        .arg(
-            Arg::new("key") // add key
-                .short('a')
-                .long("add")
-                .takes_value(true)
-                .help("Add new env var to tool")
-        )
-        .arg(
-            Arg::new("value") // value
-                .short('v')
-                .long("value")
-                .takes_value(true)
-                .help("Add value to new env name")
-        )
-        .arg(
-            Arg::new("share") // share
-            .short('s')
-            .long("share")
-            .takes_value(true)
-            .help("Add emails to share directory to, seperate by comma")
+        .subcommand(
+            cliCommand::new("add")
+            .about("Appends new environmental variables to program")
+            .arg(
+                Arg::new("key") // add key
+                    .short('a')
+                    .long("key")
+                    .takes_value(true)
+                    .help("Add new env var to tool")
+            )
+            .arg(
+                Arg::new("value") // value
+                    .short('v')
+                    .long("value")
+                    .takes_value(true)
+                    .help("Add value to new env name")
+            )
         )
         .get_matches();
 
@@ -95,22 +106,32 @@ fn main() {
     })
     .expect("Error setting Ctrl-C handler");
 
-    if (check_uploading(matches.value_of("course"), matches.value_of("key"), matches.value_of("value"))) {
-        // if uploading, do this
-        let course = unwrap::unwrap_keys(matches.value_of("course"), true);
-        let dir = matches.value_of("directory").unwrap_or(".");
-        let share = unwrap::unwrap_keys(matches.value_of("share"), false);
-    
+    // match the different subcommands to see if uploading
+    // or if appending new envs
+    if !(matches.subcommand_matches("u").is_none()) {
+        // get subcommand matches
+        let upload_matches = matches.subcommand_matches("u").unwrap();
+        // unwrap
+        let course = unwrap::unwrap_keys(upload_matches.value_of("course"), true);
+        let dir = upload_matches.value_of("directory").unwrap_or(".");
+        let share = unwrap::unwrap_keys(upload_matches.value_of("share"), false);
         // check name of current directory
         let get_basedir_cmd = format!("echo $(basename \"$PWD\")");
         let get_basedir_spawn = Command::new("sh").arg("-c").arg(get_basedir_cmd).stdout(Stdio::piped()).output().unwrap();
         let mut get_basedir_str = String::from_utf8(get_basedir_spawn.stdout).unwrap();
-    
+        // run command
         command_line(&course, &dir, &share, true, get_basedir_str);
-    } else { // if not uploading, we must be appending
-        let key = unwrap::unwrap_keys(matches.value_of("key"), true);
-        let value = unwrap::unwrap_keys(matches.value_of("value"), true);
+    } else if !(matches.subcommand_matches("add").is_none()) {
+        // get subcommand matches
+        let append_matches = matches.subcommand_matches("add").unwrap();
+        // unwrap
+        let key = unwrap::unwrap_keys(append_matches.value_of("key"), true);
+        let value = unwrap::unwrap_keys(append_matches.value_of("value"), true);
+        // run command
         append::append_envs(key, value);
+    } else {
+        let error_msg = format!("{}Error! No argument detected! {}", RED, CLEAR_FORMAT);
+        panic!("{}", error_msg);
     }
 }
 // upload function
@@ -209,26 +230,8 @@ fn command_line(course: &str, dir: &str, share: &str, base_case: bool, base_dir:
     exit(0);
 }
 // program-specific unwrappers 
-// determine if the program should be uploading new files or updating old ones
-fn check_uploading(course: Option<&str>, add: Option<&str>, value: Option<&str>) -> bool {
-    if (add.is_none() != value.is_none()) {
-        // add and value need each other to exist
-        panic!("Var name and value belong together shawty 💔");
-    }
-    if (course.is_none() && !add.is_none()) {
-        // not uploading
-        return false;
-    } else if (add.is_none() && !course.is_none()) {
-        // yes uploading
-        return true;
-    } else if (add.is_none() && course.is_none()) {
-        panic!("No keywords provided");
-    } else {
-        panic!("Too many arguments");
-    }
-}
 // return the new parent directory when creating a google folder
-fn return_parent(fname: &str) -> std::string::String {
+fn return_parent(fname: &str) -> String {
     let cse_hashmap = class_hashmap();
     if cse_hashmap.contains_key(fname) {
         let cse_folder_id = cse_hashmap.get(fname);
