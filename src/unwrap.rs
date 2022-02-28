@@ -200,6 +200,10 @@ pub fn is_trashed(search_string: &String, prompt: bool) -> bool {
     return !trash_query.is_empty(); // if the query returned none, it is not in trash
 }
 
+pub fn is_not_trashed(search_string: &String, prompt: bool) -> bool {
+    return !is_trashed(search_string, prompt);
+}
+
 // return the result from the trash query
 // when this program runs it will output all trashed files in drive
 // and return the first match with the name of the search string

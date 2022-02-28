@@ -18,7 +18,8 @@ extern crate dotenv;
 mod append;
 mod unwrap;
 mod share;
-use unwrap::*;
+//use unwrap::*;
+use unwrap::{GdriveQuery, FileId};
 
 // colors for readable outputs
 static RED: &str = "\u{001b}[31m";
@@ -125,7 +126,7 @@ fn command_line(course: &str, dir: &str, share: &str, base_case: bool, base_dir:
     unwrap::is_trashed(&base_dir, *&base_case); // check if trashed before setting struct to 
     //                                   preserve result struct integrity
     let result_struct = GdriveQuery::query(&cse_folder_id, &base_dir);
-    if result_struct.update && !is_trashed(&base_dir, false) {
+    if result_struct.update && unwrap::is_not_trashed(&base_dir, false) {
         print!("{}Updating Google Folder: {}  ⏳{}\n", YELLOW, &base_dir.trim(), CLEAR_FORMAT);
     } else {
         print!("{}Uploading Google Folder: {}  ⏳{}\n", YELLOW, &base_dir.trim(), CLEAR_FORMAT);
@@ -172,7 +173,7 @@ fn command_line(course: &str, dir: &str, share: &str, base_case: bool, base_dir:
             let sub_result_struct = GdriveQuery::query( &base_dir_id, &String::from(short_path));
 
             // update or upload
-            if sub_result_struct.update && !is_trashed(&base_dir, false) {
+            if sub_result_struct.update && unwrap::is_not_trashed(&base_dir, false) {
                 command_line(&base_dir_id, full_path, "", false, String::from(format!("{}\n",short_path)));
             } else {
                 // upload new folder to the created gdrive folder (not course folder)
@@ -193,7 +194,7 @@ fn command_line(course: &str, dir: &str, share: &str, base_case: bool, base_dir:
         // find the file id. pipe in the id of the current drive directory in order to query it
         let path_id = FileId::get(&result_struct, &result_struct.id, &path);
 
-        let cmd = return_upload_or_update_cmd(&path_id, &base_dir_id, &path);
+        let cmd = unwrap::return_upload_or_update_cmd(&path_id, &base_dir_id, &path);
         // running this while saving the output auto-terminates process when done
         
         // error message formatting  
@@ -238,16 +239,16 @@ fn return_parent(fname: &str) -> std::string::String {
     }
 }
 // return the id of the current gdrive base directory 
-fn return_base_directory(gstruct: &GdriveQuery, cse_folder_id: &String, get_basedir_str: &String, base_case: bool) -> std::string::String {
+fn return_base_directory(gstruct: &GdriveQuery, cse_folder_id: &String, get_basedir_str: &String, base_case: bool) -> String {
     if !base_case {
         return cse_folder_id.to_owned();
     }
-    if gstruct.update  && !is_trashed(&cse_folder_id, false){
+    if gstruct.update  && unwrap::is_not_trashed(&cse_folder_id, false){
         return gstruct.id.to_owned();
     } else {
         let create_base_dir = format!("gdrive mkdir --parent {} {}", cse_folder_id, get_basedir_str); // NOTE: second var has trailing whitespace -- be careful when updating code
         let dir = Command::new("sh").arg("-c").arg(create_base_dir).stdout(Stdio::piped()).output().unwrap();
         let mut dir_name_full = String::from_utf8(dir.stdout).unwrap();
-        return unwrap_new_dir(dir_name_full);
+        return unwrap::unwrap_new_dir(dir_name_full);
     }
 }
