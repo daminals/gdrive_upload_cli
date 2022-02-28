@@ -7,7 +7,7 @@ use std::io::Write;
 use std::{env, fs};
 use std::process::{Command, Stdio, exit};
 
-static APPEND_NUM: usize = 33;
+static APPEND_NUM: usize = 36;
 
 pub fn append_envs(key: &str, value: &str) {
     // colors

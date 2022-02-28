@@ -29,7 +29,6 @@ static YELLOW: &str = "\u{001b}[33m";
 static CLEAR_FORMAT: &str = "\u{001b}[0m";
 static UNDERLINE: &str = "\u{001b}[4m";
 
-
 // create a hashmap of course names to folder id's
 // if not in hash map, use whatever user entered (could be folder ID)
 fn class_hashmap() -> std::collections::HashMap<&'static str, std::string::String> {
