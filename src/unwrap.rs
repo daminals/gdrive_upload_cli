@@ -4,7 +4,6 @@
 // 02.25.2022
 
 use std::path::Path;
-use clap::{App, Arg};
 use std::{fmt, fs, env};
 use std::io::Write;
 use std::fs::metadata;

@@ -5,7 +5,8 @@
 #![allow(unused)]
 
 // import external
-use clap::{App, Arg};
+use clap::Arg;
+use clap::Command as cliCommand;
 use std::{fmt, fs, env};
 use std::io::Write;
 use std::fs::metadata;
@@ -18,7 +19,7 @@ extern crate dotenv;
 mod append;
 mod unwrap;
 mod share;
-//use unwrap::*;
+//use unwrap::structs;
 use unwrap::{GdriveQuery, FileId};
 
 // colors for readable outputs
@@ -48,7 +49,7 @@ fn main() {
     dotenv::from_path(upload_tool_dotenv).expect("Encountered an error reading .env");
     // load dotenv required to access the gdrive course hashmap for this project
 
-    let matches = App::new("Homework Uploader")
+    let matches = cliCommand::new("Homework Uploader")
         .version("0.1.2")
         .author("Daniel Kogan")
         .about("Uploads my directories to my google drive")
